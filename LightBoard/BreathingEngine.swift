@@ -14,6 +14,7 @@ class BreathingEngine: ObservableObject {
     @Published var speed: Double = 4.0 // Duration of one complete breath cycle in seconds
     @Published var intensity: Int = 5 // Number of brightness steps (1-10)
     @Published var keyPressMode: Bool = false // Toggle between continuous breathing and key press mode
+    @Published var musicSyncMode: Bool = false // Toggle for music sync mode
     
     private var timer: AnyCancellable?
     private let brightnessController = KeyboardBrightnessController()
@@ -22,6 +23,7 @@ class BreathingEngine: ObservableObject {
     private let maxBrightnessLevel: Int = 16 // macOS keyboard brightness has 16 levels
     private var fadeOutTimer: AnyCancellable?
     private let keyPressMonitor = KeyPressMonitor()
+    private let audioAnalyzer = AudioAnalyzer()
     
     /// Start the breathing effect
     func start() {
@@ -29,7 +31,14 @@ class BreathingEngine: ObservableObject {
         
         isRunning = true
         
-        if keyPressMode {
+        if musicSyncMode {
+            // Music sync mode: pulse on detected beats
+            currentBrightnessLevel = 0
+            audioAnalyzer.onBeatDetected = { [weak self] in
+                self?.handleBeat()
+            }
+            audioAnalyzer.start()
+        } else if keyPressMode {
             // Key press mode: monitor keyboard and pulse on key press
             currentBrightnessLevel = 0
             keyPressMonitor.startMonitoring { [weak self] in
@@ -54,6 +63,9 @@ class BreathingEngine: ObservableObject {
         guard isRunning else { return }
         
         isRunning = false
+        
+        // Stop audio analyzer
+        audioAnalyzer.stop()
         
         // Stop key press monitoring
         keyPressMonitor.stopMonitoring()
@@ -87,6 +99,27 @@ class BreathingEngine: ObservableObject {
     /// Toggle between continuous breathing and key press mode
     func toggleMode() {
         keyPressMode.toggle()
+        
+        // Ensure music sync is off when toggling to key press mode
+        if keyPressMode {
+            musicSyncMode = false
+        }
+        
+        // Restart if currently running to apply new mode
+        if isRunning {
+            stop()
+            start()
+        }
+    }
+    
+    /// Toggle music sync mode
+    func toggleMusicSync() {
+        musicSyncMode.toggle()
+        
+        // Ensure key press mode is off when toggling to music sync
+        if musicSyncMode {
+            keyPressMode = false
+        }
         
         // Restart if currently running to apply new mode
         if isRunning {
@@ -188,5 +221,35 @@ class BreathingEngine: ObservableObject {
         
         // Update phase for visualization
         currentPhase = Double(currentBrightnessLevel) / Double(intensity)
+    }
+    
+    /// Handle beat detection event - illuminate and fade out
+    private func handleBeat() {
+        // Cancel any existing fade out timer
+        fadeOutTimer?.cancel()
+        
+        // Immediately set to maximum brightness based on intensity
+        let targetLevel = intensity
+        let difference = targetLevel - currentBrightnessLevel
+        
+        if difference > 0 {
+            brightnessController.increaseBrightness(steps: difference)
+        } else if difference < 0 {
+            brightnessController.decreaseBrightness(steps: abs(difference))
+        }
+        
+        currentBrightnessLevel = targetLevel
+        
+        // Start fade out after a short delay
+        fadeOutTimer = Timer.publish(every: 0.05, on: .main, in: .common)
+            .autoconnect()
+            .sink { [weak self] _ in
+                self?.fadeOut()
+            }
+    }
+    
+    /// Get audio analyzer for UI binding
+    func getAudioAnalyzer() -> AudioAnalyzer {
+        return audioAnalyzer
     }
 }

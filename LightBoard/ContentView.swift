@@ -92,29 +92,73 @@ struct ContentView: View {
                 HStack {
                     Image(systemName: "switch.2")
                         .foregroundColor(.purple)
-                    Text("Breathing Mode")
+                    Text("Effect Mode")
                         .font(.headline)
                         .fontWeight(.semibold)
                 }
                 
-                Toggle(isOn: Binding(
-                    get: { breathingEngine.keyPressMode },
-                    set: { _ in breathingEngine.toggleMode() }
-                )) {
-                    HStack {
-                        Image(systemName: breathingEngine.keyPressMode ? "hand.tap.fill" : "lungs.fill")
-                            .foregroundColor(breathingEngine.keyPressMode ? .orange : .blue)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(breathingEngine.keyPressMode ? "Key Press Mode" : "Continuous Breathing")
-                                .font(.subheadline)
-                                .fontWeight(.medium)
-                            Text(breathingEngine.keyPressMode ? "Keys illuminate on press and fade out" : "Smooth rhythmic breathing effect")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                // Mode Picker
+                Picker("Mode", selection: Binding(
+                    get: {
+                        if breathingEngine.musicSyncMode {
+                            return 2
+                        } else if breathingEngine.keyPressMode {
+                            return 1
+                        } else {
+                            return 0
+                        }
+                    },
+                    set: { newValue in
+                        switch newValue {
+                        case 0: // Continuous
+                            if breathingEngine.keyPressMode {
+                                breathingEngine.toggleMode()
+                            }
+                            if breathingEngine.musicSyncMode {
+                                breathingEngine.toggleMusicSync()
+                            }
+                        case 1: // Key Press
+                            if !breathingEngine.keyPressMode {
+                                breathingEngine.toggleMode()
+                            }
+                        case 2: // Music Sync
+                            if !breathingEngine.musicSyncMode {
+                                breathingEngine.toggleMusicSync()
+                            }
+                        default:
+                            break
                         }
                     }
+                )) {
+                    Text("Continuous").tag(0)
+                    Text("Key Press").tag(1)
+                    Text("Music Sync").tag(2)
                 }
-                .toggleStyle(.switch)
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                
+                // Mode Description
+                HStack {
+                    Image(systemName: breathingEngine.musicSyncMode ? "music.note" : (breathingEngine.keyPressMode ? "hand.tap.fill" : "lungs.fill"))
+                        .foregroundColor(breathingEngine.musicSyncMode ? .purple : (breathingEngine.keyPressMode ? .orange : .blue))
+                    Text(breathingEngine.musicSyncMode ? "Pulses with music beats" : (breathingEngine.keyPressMode ? "Keys illuminate on press and fade out" : "Smooth rhythmic breathing effect"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
+                // Beat Indicator (only show in music sync mode)
+                if breathingEngine.musicSyncMode {
+                    HStack {
+                        Circle()
+                            .fill(breathingEngine.getAudioAnalyzer().beatDetected ? Color.green : Color.gray.opacity(0.3))
+                            .frame(width: 10, height: 10)
+                            .animation(.easeInOut(duration: 0.1), value: breathingEngine.getAudioAnalyzer().beatDetected)
+                        
+                        Text("Beat Detected")
+                            .font(.caption)
+                            .foregroundColor(breathingEngine.getAudioAnalyzer().beatDetected ? .green : .secondary)
+                    }
+                }
             }
             .padding(.horizontal)
             
@@ -122,29 +166,59 @@ struct ContentView: View {
             
             // Settings
             VStack(alignment: .leading, spacing: 20) {
-                // Speed Control
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Image(systemName: "speedometer")
-                            .foregroundColor(.blue)
-                        Text("Speed: \(String(format: "%.1f", breathingEngine.speed))s per cycle")
-                            .font(.subheadline)
-                            .fontWeight(.medium)
+                // Speed Control (only for continuous mode)
+                if !breathingEngine.keyPressMode && !breathingEngine.musicSyncMode {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "speedometer")
+                                .foregroundColor(.blue)
+                            Text("Speed: \(String(format: "%.1f", breathingEngine.speed))s per cycle")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
+                        
+                        HStack {
+                            Text("Slow")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Slider(value: Binding(
+                                get: { breathingEngine.speed },
+                                set: { breathingEngine.setSpeed($0) }
+                            ), in: 1...10, step: 0.5)
+                            
+                            Text("Fast")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
-                    
-                    HStack {
-                        Text("Slow")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                }
+                
+                // Beat Sensitivity (only for music sync mode)
+                if breathingEngine.musicSyncMode {
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "waveform")
+                                .foregroundColor(.purple)
+                            Text("Sensitivity: \(String(format: "%.0f", breathingEngine.getAudioAnalyzer().sensitivity * 100))%")
+                                .font(.subheadline)
+                                .fontWeight(.medium)
+                        }
                         
-                        Slider(value: Binding(
-                            get: { breathingEngine.speed },
-                            set: { breathingEngine.setSpeed($0) }
-                        ), in: 1...10, step: 0.5)
-                        
-                        Text("Fast")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        HStack {
+                            Text("Low")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            Slider(value: Binding(
+                                get: { breathingEngine.getAudioAnalyzer().sensitivity },
+                                set: { breathingEngine.getAudioAnalyzer().setSensitivity($0) }
+                            ), in: 0.0...1.0, step: 0.1)
+                            
+                            Text("High")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                 }
                 
@@ -195,7 +269,7 @@ struct ContentView: View {
                     }) {
                         HStack {
                             Image(systemName: "gear")
-                            Text("Grant Permissions")
+                            Text("Grant Accessibility")
                         }
                         .font(.caption)
                         .padding(.horizontal, 12)
@@ -206,11 +280,44 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                 }
+                
+                // Microphone permission (only show in music sync mode)
+                if breathingEngine.musicSyncMode {
+                    HStack {
+                        Image(systemName: permissionHelper.hasMicrophonePermission ? "checkmark.shield.fill" : "exclamationmark.shield.fill")
+                            .foregroundColor(permissionHelper.hasMicrophonePermission ? .green : .orange)
+                        
+                        Text(permissionHelper.getMicrophonePermissionMessage())
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                    .onAppear {
+                        permissionHelper.checkMicrophonePermission()
+                    }
+                    
+                    if !permissionHelper.hasMicrophonePermission {
+                        Button(action: {
+                            permissionHelper.requestMicrophonePermission()
+                        }) {
+                            HStack {
+                                Image(systemName: "mic.fill")
+                                Text("Grant Microphone Access")
+                            }
+                            .font(.caption)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color.orange.opacity(0.2))
+                            .foregroundColor(.orange)
+                            .cornerRadius(8)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
             }
             
             Spacer()
         }
-        .frame(width: 400, height: 600)
+        .frame(width: 400, height: 700)
         .padding()
         .onAppear {
             permissionHelper.checkPermission()

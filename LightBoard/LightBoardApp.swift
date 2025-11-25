@@ -31,7 +31,10 @@ struct LightBoardApp: App {
         MenuBarExtra {
             MenuBarView(breathingEngine: breathingEngine, permissionHelper: permissionHelper)
         } label: {
-            if breathingEngine.keyPressMode {
+            if breathingEngine.musicSyncMode {
+                Image(systemName: breathingEngine.isRunning ? "music.note" : "music.note")
+                    .symbolEffect(.pulse, isActive: breathingEngine.isRunning)
+            } else if breathingEngine.keyPressMode {
                 Image(systemName: breathingEngine.isRunning ? "hand.tap.fill" : "hand.tap")
                     .symbolEffect(.pulse, isActive: breathingEngine.isRunning)
             } else {
