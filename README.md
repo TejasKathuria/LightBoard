@@ -1,4 +1,4 @@
-<img width="2048" height="2048" alt="lightboardicon" src="https://github.com/user-attachments/assets/da1c7b81-fec2-4298-ac8f-a975a9e36058" />
+<img width="512" height="512" alt="512_lightboard" src="https://github.com/user-attachments/assets/47403131-b3d3-499c-96f4-c90655c9ee57" />
 
 # LightBoard
 ### Add fantastic lighting effects to your MacBook's Backlit Keyboard
