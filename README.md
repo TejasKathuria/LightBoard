@@ -32,3 +32,6 @@ However, this app internally:
 	4.	Allows user customization for speed and intensity
 
 **NOTE:** The utility does not modify system files.
+
+## LIMITATIONS
+- The App cannot directly modify hardware brightness, it relies on simulated key presses due to which every time the illumination occurs you'd get a pop-up on your screen
