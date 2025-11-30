@@ -5,6 +5,7 @@
 
 LightBoard is a lightweight macOS utility that emulates keyboard-backlight effects on Macs that do not provide native software control.
 The app uses a virtual HID device to simulate brightness-control key presses, creating smooth lighting effects while keeping everything system-safe.
+### [Have a look at it!](https://youtu.be/7tMr4-BPVOU)
 
 ## Features
 **1. Key-Press Illuminating Effect**
